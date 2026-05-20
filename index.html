@@ -75,7 +75,7 @@ body{
   -webkit-overflow-scrolling:touch;
 }
 .table-header{
-  padding:6px 8px;
+  padding:6px 4px 6px 8px;
 }
 .table-header h2{font-size:14px;color:var(--blue);margin:0;}
 .table-header .stats{font-size:11px;color:var(--gray);margin-top:1px;}
@@ -91,7 +91,7 @@ body{
 .sheet-panel{margin:4px 4px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
 .sheet-panel-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:6px 6px;background:#fafafa;cursor:pointer;user-select:none;
+  padding:6px 4px 6px 6px;background:#fafafa;cursor:pointer;user-select:none;
   font-size:13px;font-weight:600;transition:background .15s;
 }
 .sheet-panel-header:active{background:var(--gray-light);}
@@ -103,12 +103,12 @@ body{
 
 /* ========== INSPECTION ITEMS ========== */
 .inspect-item{
-  padding:6px 6px;border-bottom:1px solid #eee;
+  padding:6px 4px 6px 8px;border-bottom:1px solid #eee;
   transition:background .15s;
 }
 .inspect-item:last-child{border-bottom:none;}
 .inspect-item.ng{border-left:3px solid var(--red);background:var(--red-light);}
-.inspect-item .item-row{display:flex;align-items:flex-start;gap:6px;}
+.inspect-item .item-row{display:flex;align-items:flex-start;gap:4px;}
 .inspect-item .item-info{flex:1;min-width:0;}
 .inspect-item .seq{font-size:10px;color:var(--gray);font-weight:600;}
 .item-name-input{
