@@ -1,0 +1,24 @@
+{
+  "name": "公路工程监督要点检查",
+  "short_name": "监督要点检查",
+  "description": "公路工程监督要点检查工具 - 离线检查、拍照留证、一键导出",
+  "start_url": "/pwa/index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1a73e8",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%231a73e8'/%3E%3Ctext x='96' y='76' text-anchor='middle' fill='white' font-size='48' font-weight='bold'%3E监%3C/text%3E%3Ctext x='96' y='140' text-anchor='middle' fill='white' font-size='28'%3E公路%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231a73e8'/%3E%3Ctext x='256' y='200' text-anchor='middle' fill='white' font-size='140' font-weight='bold'%3E监%3C/text%3E%3Ctext x='256' y='360' text-anchor='middle' fill='white' font-size='72'%3E公路%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

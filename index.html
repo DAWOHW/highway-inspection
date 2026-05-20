@@ -1,0 +1,1960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#1a73e8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="监督要点检查">
+<link rel="manifest" href="manifest.json">
+<title>公路工程监督要点检查</title>
+<script src="data.js"></script>
+<script src="exceljs.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1a73e8;--blue-light:#e8f0fe;--red:#d93025;--red-light:#fce8e6;
+  --green:#1e8e3e;--green-light:#e6f4ea;--gray:#5f6368;--gray-light:#f1f3f4;
+  --border:#dadce0;--shadow:0 1px 3px rgba(0,0,0,.1);--radius:8px;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:#f5f5f5;color:#202124;line-height:1.5;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;overflow:hidden;position:fixed;inset:0;
+}
+#app{
+  max-width:480px;margin:0 auto;display:flex;flex-direction:column;
+  height:100vh;height:100dvh;background:#fff;position:relative;overflow:hidden;
+}
+
+/* ========== PROJECT INFO BAR ========== */
+#project-bar{
+  padding:8px 12px;background:var(--blue);color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;min-height:42px;
+}
+#project-bar .info{flex:1;min-width:0;}
+#project-bar .name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#project-bar .meta{font-size:11px;opacity:.85;margin-top:1px;}
+#project-bar .edit-icon{font-size:16px;margin-left:6px;flex-shrink:0;}
+
+/* ========== PROJECT MODAL ========== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.modal-overlay.hidden{display:none;}
+.modal-box{
+  background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:480px;
+  padding:20px 16px calc(20px + var(--safe-bottom));max-height:90vh;overflow-y:auto;
+}
+.modal-box h3{font-size:18px;margin-bottom:16px;color:var(--blue);}
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-size:13px;color:var(--gray);margin-bottom:4px;font-weight:500;}
+.form-group input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:15px;outline:none;transition:border .2s;}
+.form-group input:focus{border-color:var(--blue);}
+.form-group input[type="date"]{appearance:none;-webkit-appearance:none;min-height:44px;}
+.btn-primary{
+  width:100%;padding:12px;background:var(--blue);color:#fff;border:none;
+  border-radius:var(--radius);font-size:16px;font-weight:600;cursor:pointer;
+  margin-top:8px;transition:background .2s;
+}
+.btn-primary:active{background:#1557b0;}
+
+/* ========== CONTENT AREA ========== */
+#table-header-container{
+  flex-shrink:0;background:var(--blue-light);
+  border-bottom:1px solid var(--border);
+}
+#table-header-container:empty{display:none;}
+#content{
+  flex:1;overflow-y:auto;padding-bottom:140px;
+  -webkit-overflow-scrolling:touch;
+}
+.table-header{
+  padding:6px 8px;
+}
+.table-header h2{font-size:14px;color:var(--blue);margin:0;}
+.table-header .stats{font-size:11px;color:var(--gray);margin-top:1px;}
+.import-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:5px 10px;background:var(--blue);color:#fff;border:none;
+  border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap;
+}
+.import-btn:active{opacity:.8;}
+.table-header .stats .ng-count{color:var(--red);font-weight:600;}
+
+/* ========== SHEET PANELS ========== */
+.sheet-panel{margin:4px 4px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.sheet-panel-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 6px;background:#fafafa;cursor:pointer;user-select:none;
+  font-size:13px;font-weight:600;transition:background .15s;
+}
+.sheet-panel-header:active{background:var(--gray-light);}
+.sheet-panel-header .arrow{transition:transform .25s;font-size:12px;color:var(--gray);}
+.sheet-panel-header .arrow.open{transform:rotate(180deg);}
+.sheet-panel-header .sheet-stats{font-size:11px;color:var(--gray);font-weight:400;margin-left:8px;}
+.sheet-panel-body{max-height:0;overflow:hidden;transition:max-height .3s ease;}
+.sheet-panel-body.open{max-height:none;}
+
+/* ========== INSPECTION ITEMS ========== */
+.inspect-item{
+  padding:6px 6px;border-bottom:1px solid #eee;
+  transition:background .15s;
+}
+.inspect-item:last-child{border-bottom:none;}
+.inspect-item.ng{border-left:3px solid var(--red);background:var(--red-light);}
+.inspect-item .item-row{display:flex;align-items:flex-start;gap:6px;}
+.inspect-item .item-info{flex:1;min-width:0;}
+.inspect-item .seq{font-size:10px;color:var(--gray);font-weight:600;}
+.item-name-input{
+  width:100%;padding:2px 6px;border:1px solid var(--border);border-radius:4px;
+  font-size:12px;margin-top:2px;outline:none;
+  min-height:28px;resize:none;overflow:hidden;line-height:1.3;
+  box-sizing:border-box;
+}
+.item-name-input:focus{border-color:var(--blue);}
+.item-name-input::placeholder{color:#aaa;}
+.inspect-item .point{font-size:13px;font-weight:500;color:#202124;margin:1px 0;line-height:1.3;}
+.inspect-item .content-text{font-size:11px;color:var(--gray);margin:1px 0;white-space:pre-line;line-height:1.4;}
+.inspect-item .basis-text{font-size:10px;color:#999;margin:1px 0;white-space:pre-line;line-height:1.3;}
+
+/* Toggle */
+.toggle-wrap{flex-shrink:0;display:flex;align-items:center;gap:4px;}
+.toggle-btn{
+  width:40px;height:24px;border-radius:12px;border:none;cursor:pointer;
+  position:relative;transition:background .25s;outline:none;
+}
+.toggle-btn.ok{background:#34a853;}
+.toggle-btn.ng{background:var(--red);}
+.toggle-btn::after{
+  content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;
+  border-radius:50%;background:#fff;transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.2);
+}
+.toggle-btn.ng::after{transform:translateX(16px);}
+.toggle-label{font-size:10px;font-weight:600;min-width:18px;text-align:center;}
+.toggle-label.ok{color:#34a853;}
+.toggle-label.ng{color:var(--red);}
+
+/* NG Detail */
+.ng-detail{
+  margin-top:6px;padding:6px 8px;background:#fff;border-radius:var(--radius);
+  border:1px solid var(--border);display:none;
+}
+.ng-detail.show{display:block;}
+.ng-detail textarea{
+  width:100%;min-height:44px;padding:6px 8px;border:1px solid var(--border);
+  border-radius:6px;font-size:12px;resize:vertical;outline:none;font-family:inherit;
+}
+.ng-detail textarea:focus{border-color:var(--blue);}
+.ng-detail .photo-section{margin-top:6px;}
+.ng-detail .photo-section .photo-label{font-size:11px;color:var(--gray);margin-bottom:4px;}
+.ng-detail .photo-grid{display:flex;flex-wrap:wrap;gap:5px;}
+.ng-detail .photo-thumb{
+  width:52px;height:52px;border-radius:4px;object-fit:cover;border:1px solid var(--border);
+}
+.ng-detail .photo-thumb-wrap{position:relative;display:inline-block;}
+.ng-detail .photo-del{
+  position:absolute;top:-5px;right:-5px;width:18px;height:18px;
+  background:var(--red);color:#fff;border:none;border-radius:50%;
+  font-size:11px;line-height:16px;text-align:center;cursor:pointer;
+}
+.ng-detail .photo-add{
+  width:52px;height:52px;border:2px dashed var(--border);border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;color:var(--gray);cursor:pointer;background:var(--gray-light);
+}
+.ng-detail .photo-add:active{background:#e0e0e0;}
+
+/* ========== EXPORT BUTTON ========== */
+.export-bar{
+  position:fixed;bottom:52px;left:50%;transform:translateX(-50%);
+  width:calc(100% - 12px);max-width:468px;z-index:90;display:none;
+}
+.export-bar.show{display:block;}
+.export-btn{
+  width:100%;padding:8px;background:#fff;color:var(--blue);
+  border:1px solid var(--blue);border-radius:var(--radius);
+  font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  transition:all .2s;box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.export-btn:active{background:var(--blue-light);}
+.export-toast{
+  position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  background:#333;color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:14px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.export-toast.show{opacity:1;}
+
+/* ========== BOTTOM TABS ========== */
+#tab-bar{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:480px;background:#fff;border-top:1px solid var(--border);
+  display:flex;overflow-x:auto;z-index:100;
+  padding-bottom:var(--safe-bottom);-webkit-overflow-scrolling:touch;
+}
+#tab-bar::-webkit-scrollbar{display:none;}
+.tab-item{
+  flex-shrink:0;padding:8px 12px;text-align:center;cursor:pointer;
+  font-size:11px;color:var(--gray);border:none;background:none;
+  min-width:60px;transition:color .15s;position:relative;
+}
+.tab-item.active{color:var(--blue);font-weight:600;}
+.tab-item.active::after{
+  content:'';position:absolute;top:0;left:12px;right:12px;height:3px;
+  background:var(--blue);border-radius:0 0 3px 3px;
+}
+.tab-item .tab-icon{font-size:18px;display:block;margin-bottom:2px;}
+
+/* ========== TOAST ========== */
+.toast{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  background:#333;color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:14px;z-index:300;opacity:0;transition:opacity .3s;pointer-events:none;
+}
+.toast.show{opacity:1;}
+
+/* ========== EMPTY STATE ========== */
+.empty-state{padding:40px 20px;text-align:center;color:var(--gray);}
+.empty-state .icon{font-size:48px;margin-bottom:12px;}
+
+/* ========== LOGIN SCREEN ========== */
+#login-screen{
+  position:fixed;inset:0;z-index:9999;
+  background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);
+  display:flex;align-items:center;justify-content:center;
+}
+#login-screen.hidden{display:none;}
+.login-box{
+  width:calc(100% - 48px);max-width:360px;
+  background:#fff;border-radius:16px;padding:32px 24px;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);text-align:center;
+}
+.login-box .login-icon{font-size:48px;margin-bottom:12px;}
+.login-box h2{font-size:20px;color:#202124;margin-bottom:6px;}
+.login-box .login-sub{font-size:13px;color:var(--gray);margin-bottom:24px;}
+.login-box input[type="password"]{
+  width:100%;padding:12px 14px;border:2px solid var(--border);
+  border-radius:8px;font-size:16px;outline:none;text-align:center;
+  letter-spacing:4px;margin-bottom:16px;
+}
+.login-box input[type="password"]:focus{border-color:var(--blue);}
+.login-box .login-btn{
+  width:100%;padding:12px;background:var(--blue);color:#fff;
+  border:none;border-radius:8px;font-size:16px;font-weight:600;
+  cursor:pointer;transition:background .2s;
+}
+.login-box .login-btn:active{background:#1557b0;}
+.login-box .login-error{
+  color:var(--red);font-size:13px;margin-top:10px;min-height:20px;
+}
+
+@media (min-width:481px){
+  .modal-box{border-radius:16px;margin-bottom:20px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-icon">🔒</div>
+    <h2>公路工程监督要点检查</h2>
+    <div class="login-sub">请输入访问密码</div>
+    <input type="password" id="login-pwd" placeholder="输入密码" autocomplete="off">
+    <button class="login-btn" onclick="handleLogin()">进 入</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="app">
+  <!-- Project Info Bar -->
+  <div id="project-bar" onclick="showProjectModal()">
+    <div class="info">
+      <div class="name" id="bar-project">点击设置项目信息</div>
+      <div class="meta" id="bar-meta"></div>
+    </div>
+    <span class="edit-icon">✎</span>
+  </div>
+
+  <!-- Table Header (frozen below project bar) -->
+  <div id="table-header-container"></div>
+
+  <!-- Content Area -->
+  <div id="content"></div>
+
+  <!-- Export Bar -->
+  <div id="export-bar" class="export-bar">
+    <button class="export-btn" onclick="exportCurrentTable()">
+      📥 导出Excel（不合格项）
+    </button>
+  </div>
+
+  <!-- Bottom Tabs -->
+  <div id="tab-bar"></div>
+</div>
+
+<!-- Project Modal -->
+<div id="project-modal" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3>📋 项目信息</h3>
+    <div class="form-group">
+      <label>项目名称 *</label>
+      <input type="text" id="input-project" placeholder="请输入项目名称">
+    </div>
+    <div class="form-group">
+      <label>标段</label>
+      <input type="text" id="input-section" placeholder="如：第一合同段">
+    </div>
+    <div class="form-group">
+      <label>检查日期</label>
+      <input type="date" id="input-date">
+    </div>
+    <div class="form-group">
+      <label>检查人</label>
+      <input type="text" id="input-inspector" placeholder="请输入检查人姓名">
+    </div>
+    <button class="btn-primary" onclick="saveProjectInfo()">✓ 确认</button>
+  </div>
+</div>
+
+<!-- Export Toast -->
+<div id="export-toast" class="export-toast"></div>
+<!-- General Toast -->
+<div id="toast" class="toast"></div>
+
+<script>
+// ==================== APP STATE ====================
+const TAB_CONFIG = [
+  { id: 'quality_ch1', icon: '📋', label: '质量①', short: '质量管理行为' },
+  { id: 'quality_ch2', icon: '🔧', label: '质量②', short: '施工工艺' },
+  { id: 'quality_ch3', icon: '📐', label: '质量③', short: '专项' },
+  { id: 'safety_ch1', icon: '🛡️', label: '安全①', short: '安全体系' },
+  { id: 'safety_ch2', icon: '⚠️', label: '安全②', short: '现场安全' },
+  { id: 'safety_ch3', icon: '🔒', label: '安全③', short: '专项' },
+  { id: 'spot_check',  icon: '🔍', label: '抽检', short: '抽检' }
+];
+
+let state = {
+  currentTab: 'quality_ch1',
+  projectName: '',
+  section: '',
+  checkDate: '',
+  inspector: '',
+  inspectionData: {} // key: "{tableId}|{sheetName}|{seq}" -> {status, problemText, photos:[]}
+};
+
+// ==================== INDEXEDDB ====================
+const DB_NAME = 'InspectionDB';
+const DB_VERSION = 2;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains('inspections')) {
+        const store = database.createObjectStore('inspections', { keyPath: 'id' });
+        store.createIndex('tableId', 'tableId', { unique: false });
+        store.createIndex('project', 'projectKey', { unique: false });
+      }
+      // v2: separate store for export-quality photo Blobs (keeps inspection records lightweight)
+      if (!database.objectStoreNames.contains('photoExports')) {
+        database.createObjectStore('photoExports', { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function buildRecordId(tableId, sheetName, seq) {
+  const projKey = [state.projectName, state.section].filter(Boolean).join('_');
+  return `${projKey}|${tableId}|${sheetName}|${seq}`;
+}
+
+function getProjectKey() {
+  return [state.projectName, state.section].filter(Boolean).join('_');
+}
+
+async function saveInspection(tableId, sheetName, seq, data) {
+  if (!db) await openDB();
+  const id = buildRecordId(tableId, sheetName, seq);
+
+  // Preserve itemName for 'other' tab (not overwritten by toggle)
+  let preservedName;
+  if (tableId === 'other' && data.itemName === undefined) {
+    preservedName = await new Promise((resolve) => {
+      const tx = db.transaction('inspections', 'readonly');
+      tx.objectStore('inspections').get(id).onsuccess = e => {
+        resolve(e.target.result ? e.target.result.itemName : undefined);
+      };
+    });
+  }
+
+  const record = {
+    id,
+    tableId,
+    sheetName,
+    itemSeq: seq,
+    projectKey: getProjectKey(),
+    projectName: state.projectName,
+    section: state.section,
+    status: data.status || 'ok',
+    problemText: data.problemText || '',
+    photos: data.photos || [],
+    timestamp: Date.now()
+  };
+  if (preservedName !== undefined) record.itemName = preservedName;
+  if (data.itemName !== undefined) record.itemName = data.itemName;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('inspections', 'readwrite');
+    const store = tx.objectStore('inspections');
+    store.put(record);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadInspections(tableId) {
+  if (!db) await openDB();
+  const projKey = getProjectKey();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('inspections', 'readonly');
+    const store = tx.objectStore('inspections');
+    const index = store.index('project');
+    const range = IDBKeyRange.only(projKey);
+    const results = {};
+    index.openCursor(range).onsuccess = (e) => {
+      const cursor = e.target.result;
+      if (cursor) {
+        if (cursor.value.tableId === tableId) {
+          const key = `${cursor.value.tableId}|${cursor.value.sheetName}|${cursor.value.itemSeq}`;
+          const rawPhotos = cursor.value.photos || [];
+          // Only load thumb for display; export Blob is in separate store
+          const lightPhotos = rawPhotos.map(p => {
+            if (typeof p === 'string') return p; // old format, keep as-is (thumb)
+            return { thumb: p.thumb || '' };
+          });
+          results[key] = {
+            status: cursor.value.status,
+            problemText: cursor.value.problemText || '',
+            photos: lightPhotos,
+            itemName: cursor.value.itemName || '',
+            photoCount: rawPhotos.length
+          };
+        }
+        cursor.continue();
+      } else {
+        resolve(results);
+      }
+    };
+    index.openCursor(range).onerror = () => reject(tx.error);
+  });
+}
+
+async function loadAllNGInspections(tableId) {
+  if (!db) await openDB();
+  const projKey = getProjectKey();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('inspections', 'readonly');
+    const store = tx.objectStore('inspections');
+    const index = store.index('project');
+    const range = IDBKeyRange.only(projKey);
+    const results = [];
+    index.openCursor(range).onsuccess = (e) => {
+      const cursor = e.target.result;
+      if (cursor) {
+        if (cursor.value.tableId === tableId && cursor.value.status === 'ng') {
+          const val = cursor.value;
+          // Strip original base64 from photos to save memory; only keep count
+          const photoCount = val.photos ? val.photos.length : 0;
+          results.push({
+            ...val,
+            photos: [],
+            photoCount
+          });
+        }
+        cursor.continue();
+      } else {
+        resolve(results);
+      }
+    };
+    index.openCursor(range).onerror = () => reject(tx.error);
+  });
+}
+
+// ==================== LOCALSTORAGE ====================
+function loadProjectFromStorage() {
+  try {
+    const raw = localStorage.getItem('inspection_project');
+    if (raw) {
+      const p = JSON.parse(raw);
+      state.projectName = p.projectName || '';
+      state.section = p.section || '';
+      state.checkDate = p.checkDate || '';
+      state.inspector = p.inspector || '';
+    }
+  } catch(e) {}
+  if (!state.checkDate) {
+    state.checkDate = new Date().toISOString().split('T')[0];
+  }
+}
+
+function saveProjectToStorage() {
+  localStorage.setItem('inspection_project', JSON.stringify({
+    projectName: state.projectName,
+    section: state.section,
+    checkDate: state.checkDate,
+    inspector: state.inspector
+  }));
+}
+
+function loadTabFromStorage() {
+  try {
+    const tab = localStorage.getItem('inspection_tab');
+    if (tab && TAB_CONFIG.find(t => t.id === tab)) {
+      state.currentTab = tab;
+    }
+  } catch(e) {}
+}
+
+function saveTabToStorage() {
+  localStorage.setItem('inspection_tab', state.currentTab);
+}
+
+// ==================== LOGIN ====================
+const APP_PASSWORD = 'HXCD@1'; // ← 修改此值即可更改登录密码，重新部署生效
+
+function handleLogin() {
+  const input = document.getElementById('login-pwd').value;
+  const errorEl = document.getElementById('login-error');
+  if (input === APP_PASSWORD) {
+    sessionStorage.setItem('inspection_auth', '1');
+    document.getElementById('login-screen').classList.add('hidden');
+    errorEl.textContent = '';
+    // 首次登录后初始化主应用
+    initApp();
+  } else {
+    errorEl.textContent = '密码错误，请重试';
+    document.getElementById('login-pwd').value = '';
+    document.getElementById('login-pwd').focus();
+  }
+}
+
+// 回车键登录
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !document.getElementById('login-screen').classList.contains('hidden')) {
+    handleLogin();
+  }
+});
+
+// ==================== INIT ====================
+function checkAuthAndInit() {
+  // 已登录（同标签页session内）则跳过登录
+  if (sessionStorage.getItem('inspection_auth') === '1') {
+    document.getElementById('login-screen').classList.add('hidden');
+    initApp();
+  } else {
+    // 显示登录界面，等待用户输入
+    document.getElementById('login-pwd').focus();
+  }
+}
+
+async function initApp() {
+  loadProjectFromStorage();
+  loadTabFromStorage();
+  await openDB();
+  // Clean up old photo data: remove 'original' field to reduce IndexedDB size
+  await cleanupOldPhotoData();
+  updateProjectBar();
+  renderTabBar();
+  await switchTab(state.currentTab, false);
+
+  if (!state.projectName) {
+    showProjectModal();
+  }
+}
+
+// Remove 'original'/'export' base64 from old photo records; migrate export to photoExports as Blob
+async function cleanupOldPhotoData() {
+  if (!db) return;
+  try {
+    const projKey = getProjectKey();
+    if (!projKey) return; // no project set yet
+    const tx = db.transaction('inspections', 'readwrite');
+    const store = tx.objectStore('inspections');
+    const index = store.index('project');
+    const range = IDBKeyRange.only(projKey);
+    let cleaned = 0;
+    let migrated = 0;
+    const exportPuts = []; // collect export Blob puts to execute after
+
+    await new Promise((resolve) => {
+      index.openCursor(range).onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          const val = cursor.value;
+          let needsUpdate = false;
+          if (val.photos && Array.isArray(val.photos)) {
+            for (let i = 0; i < val.photos.length; i++) {
+              const p = val.photos[i];
+              if (typeof p === 'object') {
+                // Migrate export field to photoExports store as Blob
+                if (p.export) {
+                  try {
+                    const blob = dataURLtoBlob(p.export);
+                    const exportId = val.id + '_' + i;
+                    exportPuts.push({ id: exportId, recordId: val.id, blob: blob, timestamp: Date.now() });
+                    migrated++;
+                  } catch(e2) {
+                    console.warn('Blob conversion failed for', val.id, i);
+                  }
+                  delete p.export;
+                  needsUpdate = true;
+                }
+                // Remove original field (already done in previous version, but double-check)
+                if (p.original) {
+                  delete p.original;
+                  needsUpdate = true;
+                }
+              }
+            }
+          }
+          if (needsUpdate) {
+            store.put(val);
+            cleaned++;
+          }
+          cursor.continue();
+        } else {
+          resolve();
+        }
+      };
+    });
+    if (cleaned > 0) {
+      console.log('Cleaned large fields from', cleaned, 'records');
+    }
+
+    // Store migrated export Blobs in photoExports
+    if (exportPuts.length > 0) {
+      for (const put of exportPuts) {
+        try {
+          await new Promise((res) => {
+            const tx2 = db.transaction('photoExports', 'readwrite');
+            tx2.objectStore('photoExports').put(put);
+            tx2.oncomplete = () => res();
+            tx2.onerror = () => res(); // non-critical
+          });
+        } catch(e3) { /* skip */ }
+      }
+      console.log('Migrated', migrated, 'export photos to Blob store');
+    }
+  } catch(e) {
+    console.warn('Cleanup error (non-critical):', e);
+  }
+}
+
+function updateProjectBar() {
+  const nameEl = document.getElementById('bar-project');
+  const metaEl = document.getElementById('bar-meta');
+  if (state.projectName) {
+    nameEl.textContent = state.projectName;
+    const parts = [state.section, state.checkDate, state.inspector].filter(Boolean);
+    metaEl.textContent = parts.join(' · ') || '点击修改信息';
+  } else {
+    nameEl.textContent = '点击设置项目信息';
+    metaEl.textContent = '';
+  }
+}
+
+// ==================== MODAL ====================
+function showProjectModal() {
+  const modal = document.getElementById('project-modal');
+  modal.classList.remove('hidden');
+  document.getElementById('input-project').value = state.projectName;
+  document.getElementById('input-section').value = state.section;
+  document.getElementById('input-date').value = state.checkDate;
+  document.getElementById('input-inspector').value = state.inspector;
+}
+
+function saveProjectInfo() {
+  state.projectName = document.getElementById('input-project').value.trim();
+  state.section = document.getElementById('input-section').value.trim();
+  state.checkDate = document.getElementById('input-date').value;
+  state.inspector = document.getElementById('input-inspector').value.trim();
+
+  if (!state.projectName) {
+    showToast('请输入项目名称');
+    return;
+  }
+
+  saveProjectToStorage();
+  updateProjectBar();
+  document.getElementById('project-modal').classList.add('hidden');
+  switchTab(state.currentTab, true);
+  showToast('项目信息已保存 ✓');
+}
+
+// ==================== TABS ====================
+function renderTabBar() {
+  const bar = document.getElementById('tab-bar');
+  bar.innerHTML = TAB_CONFIG.map(t => `
+    <button class="tab-item ${t.id === state.currentTab ? 'active' : ''}"
+            onclick="switchTab('${t.id}')">
+      <span class="tab-icon">${t.icon}</span>
+      ${t.label}
+    </button>
+  `).join('')
+  + `<button class="tab-item ${state.currentTab === 'other' ? 'active' : ''}"
+           onclick="switchTab('other')">
+       <span class="tab-icon">📝</span>其他
+     </button>`;
+  const spacer = document.createElement('div');
+  spacer.style.cssText = 'flex-shrink:0;width:8px;';
+  bar.appendChild(spacer);
+}
+
+async function switchTab(tableId, forceReload) {
+  state.currentTab = tableId;
+  saveTabToStorage();
+
+  // Update tab bar active state
+  document.querySelectorAll('.tab-item').forEach(el => {
+    const onclick = el.getAttribute('onclick') || '';
+    el.classList.toggle('active', onclick.includes("'"+tableId+"'"));
+  });
+
+  // Load data from IndexedDB
+  const idbData = await loadInspections(tableId);
+
+  // Build content
+  if (tableId === 'other') {
+    await renderOtherTab(idbData);
+    return;
+  }
+
+  const table = INSPECTION_DATA.tables.find(t => t.id === tableId);
+  if (!table) {
+    document.getElementById('table-header-container').innerHTML = '';
+    document.getElementById('content').innerHTML = '<div class="empty-state">数据未找到</div>';
+    return;
+  }
+
+  let totalItems = 0;
+  let ngCount = 0;
+
+  const tableHeaderHtml = `<div class="table-header">
+    <h2>${table.title}</h2>
+    <div class="stats">共 <span id="total-count">0</span> 条 · <span class="ng-count" id="ng-count">0</span> 条不合格</div>
+  </div>`;
+
+  let contentHtml = '';
+
+  for (const sheet of table.sheets) {
+    let sheetNgCount = 0;
+    let itemsHtml = '';
+
+    for (const item of sheet.items) {
+      const key = `${tableId}|${sheet.name}|${item.seq}`;
+      const idbItem = idbData[key];
+      const status = idbItem ? idbItem.status : 'ok';
+      const isNG = status === 'ng';
+      if (isNG) { sheetNgCount++; ngCount++; }
+      totalItems++;
+
+      const itemId = `${tableId}_${sheet.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g,'_')}_${item.seq}`;
+
+      itemsHtml += `
+      <div class="inspect-item ${isNG ? 'ng' : ''}" data-key="${key}" data-item-id="${itemId}">
+        <div class="item-row">
+          <div class="item-info">
+            <span class="seq">${item.seq}</span>
+            <div class="point">${escHtml(item.point)}</div>
+            <div class="content-text">${escHtml(item.content)}</div>
+            <div class="basis-text">${escHtml(item.basis)}</div>
+          </div>
+          <div class="toggle-wrap">
+            <span class="toggle-label ${isNG ? 'ng' : 'ok'}">${isNG ? '❌' : '✅'}</span>
+            <button class="toggle-btn ${isNG ? 'ng' : 'ok'}"
+                    onclick="toggleItem('${tableId}','${escAttr(sheet.name)}',${item.seq},this)"
+                    title="${isNG ? '点击切换为合格' : '点击标记不合格'}"></button>
+          </div>
+        </div>
+        <div class="ng-detail ${isNG ? 'show' : ''}" id="detail_${itemId}">
+          <textarea placeholder="请描述不合格问题（必填）..."
+                    onchange="updateProblemText('${tableId}','${escAttr(sheet.name)}',${item.seq},this.value)"
+                    oninput="autoSaveDebounced('${tableId}','${escAttr(sheet.name)}',${item.seq})">${(idbItem ? (idbItem.problemText || '') : '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+          <div class="photo-section">
+            <div class="photo-label">📷 现场照片（最多5张）</div>
+            <div class="photo-grid" id="photos_${itemId}">
+              ${renderPhotos(tableId, sheet.name, item.seq, idbItem ? idbItem.photos || [] : [])}
+              <label class="photo-add" id="photo_add_${itemId}" ${(idbItem && idbItem.photos && idbItem.photos.length >= 5) ? 'style="display:none"' : ''}>
+                +
+                <input type="file" capture="environment" accept="image/*"
+                       style="display:none"
+                       onchange="addPhoto('${tableId}','${escAttr(sheet.name)}',${item.seq},this,'${itemId}')">
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    const slug = sheet.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g,'_');
+    contentHtml += `
+    <div class="sheet-panel">
+      <div class="sheet-panel-header" onclick="toggleSheet(this)">
+        <span>${escHtml(sheet.name)}<span class="sheet-stats">（${sheet.items.length}条${sheetNgCount > 0 ? '，'+sheetNgCount+'条不合格' : ''}）</span></span>
+        <span class="arrow ${sheetNgCount > 0 ? 'open' : ''}">▼</span>
+      </div>
+      <div class="sheet-panel-body ${sheetNgCount > 0 ? 'open' : ''}">
+        ${itemsHtml}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('table-header-container').innerHTML = tableHeaderHtml;
+  document.getElementById('content').innerHTML = contentHtml;
+  document.getElementById('total-count').textContent = totalItems;
+  document.getElementById('ng-count').textContent = ngCount;
+
+  // Show/hide export bar
+  const exportBar = document.getElementById('export-bar');
+  if (ngCount > 0) {
+    exportBar.classList.add('show');
+  } else {
+    exportBar.classList.remove('show');
+  }
+}
+
+function renderPhotos(tableId, sheetName, seq, photos) {
+  const itemId = `${tableId}_${sheetName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g,'_')}_${seq}`;
+  if (!photos || photos.length === 0) return '';
+  return photos.map((p, i) => `
+    <div class="photo-thumb-wrap">
+      <img class="photo-thumb" src="${getPhotoThumb(p)}" alt="照片${i+1}">
+      <button class="photo-del" onclick="deletePhoto('${tableId}','${escAttr(sheetName)}',${seq},${i},'${itemId}')">×</button>
+    </div>
+  `).join('');
+}
+
+// ==================== OTHER TAB ====================
+const OTHER_SHEET = '其他检查项';
+let OTHER_TOTAL = parseInt(localStorage.getItem('other_total') || '100', 10);
+
+async function renderOtherTab(idbData) {
+  let ngCount = 0;
+  let itemsHtml = '';
+
+  for (let seq = 1; seq <= OTHER_TOTAL; seq++) {
+    const key = `other|${OTHER_SHEET}|${seq}`;
+    const idbItem = idbData[key];
+    const status = idbItem ? idbItem.status : 'ok';
+    const isNG = status === 'ng';
+    if (isNG) ngCount++;
+    const itemId = `other_${OTHER_SHEET}_${seq}`;
+    const itemName = idbItem ? (idbItem.itemName || '') : '';
+
+    itemsHtml += `
+    <div class="inspect-item ${isNG ? 'ng' : ''}" data-key="${key}" data-item-id="${itemId}">
+      <div class="item-row">
+        <div class="item-info">
+          <span class="seq">${seq}</span>
+          <textarea class="item-name-input" rows="1" placeholder="输入检查项名称..."
+                 onchange="updateItemName(${seq},this.value)"
+                 onblur="updateItemName(${seq},this.value)"
+                 oninput="autoResizeTextarea(this)">${escHtml(itemName)}</textarea>
+        </div>
+        <div class="toggle-wrap">
+          <span class="toggle-label ${isNG ? 'ng' : 'ok'}">${isNG ? '❌' : '✅'}</span>
+          <button class="toggle-btn ${isNG ? 'ng' : 'ok'}"
+                  onclick="toggleItem('other','${escAttr(OTHER_SHEET)}',${seq},this)"
+                  title="${isNG ? '点击切换为合格' : '点击标记不合格'}"></button>
+        </div>
+      </div>
+      <div class="ng-detail ${isNG ? 'show' : ''}" id="detail_${itemId}">
+        <textarea placeholder="请描述不合格问题（必填）..."
+                  onchange="updateProblemText('other','${escAttr(OTHER_SHEET)}',${seq},this.value)"
+                  oninput="autoSaveDebounced('other','${escAttr(OTHER_SHEET)}',${seq})">${(idbItem ? (idbItem.problemText || '') : '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+        <div class="photo-section">
+          <div class="photo-label">📷 现场照片（最多5张）</div>
+          <div class="photo-grid" id="photos_${itemId}">
+            ${renderPhotos('other', OTHER_SHEET, seq, idbItem ? idbItem.photos || [] : [])}
+            <label class="photo-add" id="photo_add_${itemId}" ${(idbItem && idbItem.photos && idbItem.photos.length >= 5) ? 'style="display:none"' : ''}>
+              +
+              <input type="file" capture="environment" accept="image/*"
+                     style="display:none"
+                     onchange="addPhoto('other','${escAttr(OTHER_SHEET)}',${seq},this,'${itemId}')">
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  const tableHeaderHtml = `<div class="table-header">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h2>其他检查项</h2>
+        <div class="stats">共 <span id="total-count">${OTHER_TOTAL}</span> 条 · <span class="ng-count" id="ng-count">${ngCount}</span> 条不合格</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <label class="import-btn">📥 导入
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importOtherExcel(this)">
+        </label>
+      </div>
+    </div>
+  </div>`;
+
+  const contentHtml = `<div class="sheet-panel">
+    <div class="sheet-panel-header" onclick="toggleSheet(this)">
+      <span>${OTHER_SHEET}<span class="sheet-stats">（${OTHER_TOTAL}条${ngCount > 0 ? '，'+ngCount+'条不合格' : ''}）</span></span>
+      <span class="arrow ${ngCount > 0 ? 'open' : ''}">▼</span>
+    </div>
+    <div class="sheet-panel-body ${ngCount > 0 ? 'open' : ''}">
+      ${itemsHtml}
+    </div>
+  </div>`;
+
+  document.getElementById('table-header-container').innerHTML = tableHeaderHtml;
+  document.getElementById('content').innerHTML = contentHtml;
+  document.getElementById('total-count').textContent = OTHER_TOTAL;
+  document.getElementById('ng-count').textContent = ngCount;
+
+  // Auto-resize all item-name-input textareas after render
+  document.querySelectorAll('.item-name-input').forEach(el => autoResizeTextarea(el));
+
+  const exportBar = document.getElementById('export-bar');
+  exportBar.classList.toggle('show', ngCount > 0);
+}
+
+async function updateItemName(seq, value) {
+  const id = buildRecordId('other', OTHER_SHEET, seq);
+  if (!db) await openDB();
+  const tx = db.transaction('inspections', 'readwrite');
+  const store = tx.objectStore('inspections');
+  const getReq = store.get(id);
+  getReq.onsuccess = () => {
+    const existing = getReq.result;
+    if (existing) {
+      existing.itemName = value;
+      existing.timestamp = Date.now();
+      store.put(existing);
+    } else {
+      store.put({
+        id, tableId: 'other', sheetName: OTHER_SHEET, itemSeq: seq,
+        projectKey: getProjectKey(), projectName: state.projectName, section: state.section,
+        status: 'ok', problemText: '', photos: [], itemName: value, timestamp: Date.now()
+      });
+    }
+  };
+}
+
+// ==================== IMPORT EXCEL FOR OTHER TAB ====================
+const OTHER_BASE_TOTAL = 100; // base manual-entry slots
+
+async function importOtherExcel(inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  inputEl.value = '';
+
+  showToast('正在解析Excel...');
+
+  try {
+    const data = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(data);
+    const ws = wb.worksheets[0];
+    if (!ws) { showToast('未找到工作表'); return; }
+
+    const names = [];
+    ws.eachRow((row, rowNum) => {
+      if (rowNum === 1) return; // skip header row
+      const cell = row.getCell(1);
+      let text = '';
+      if (cell.value !== null && cell.value !== undefined) {
+        text = String(cell.value).trim();
+      }
+      if (text) names.push(text);
+    });
+
+    if (names.length === 0) {
+      showToast('未解析到任何检查项（请确保第1列为名称，第2行起为数据）');
+      return;
+    }
+
+    if (!db) await openDB();
+    const projKey = getProjectKey();
+
+    // Load existing 'other' items to preserve manually entered data
+    const existingData = await loadInspections('other');
+
+    // Collect existing manually-entered items (those with itemName or non-ok status)
+    const manualItems = [];
+    for (let seq = 1; seq <= OTHER_TOTAL; seq++) {
+      const key = `other|${OTHER_SHEET}|${seq}`;
+      const item = existingData[key];
+      if (item && (item.itemName || item.status === 'ng')) {
+        manualItems.push({
+          itemName: item.itemName || '',
+          status: item.status,
+          problemText: item.problemText || '',
+          photos: item.photos || []
+        });
+      }
+    }
+
+    const tx = db.transaction('inspections', 'readwrite');
+    const store = tx.objectStore('inspections');
+
+    // Delete ALL old 'other' items for current project
+    const index = store.index('project');
+    const range = IDBKeyRange.only(projKey);
+    const keysToDelete = [];
+    await new Promise((resolve) => {
+      index.openCursor(range).onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          if (cursor.value.tableId === 'other') {
+            keysToDelete.push(cursor.primaryKey);
+          }
+          cursor.continue();
+        } else { resolve(); }
+      };
+    });
+    for (const key of keysToDelete) store.delete(key);
+
+    // New total = imported items + base 100 slots
+    const newTotal = names.length + OTHER_BASE_TOTAL;
+
+    // Insert imported items at seq 1..N
+    for (let i = 0; i < names.length; i++) {
+      const seq = i + 1;
+      const id = buildRecordId('other', OTHER_SHEET, seq);
+      store.put({
+        id, tableId: 'other', sheetName: OTHER_SHEET, itemSeq: seq,
+        projectKey: projKey, projectName: state.projectName, section: state.section,
+        status: 'ok', problemText: '', photos: [], itemName: names[i], timestamp: Date.now()
+      });
+    }
+
+    // Append existing manual items after imported items
+    for (let i = 0; i < manualItems.length; i++) {
+      const seq = names.length + i + 1;
+      const id = buildRecordId('other', OTHER_SHEET, seq);
+      store.put({
+        id, tableId: 'other', sheetName: OTHER_SHEET, itemSeq: seq,
+        projectKey: projKey, projectName: state.projectName, section: state.section,
+        status: manualItems[i].status, problemText: manualItems[i].problemText,
+        photos: manualItems[i].photos, itemName: manualItems[i].itemName, timestamp: Date.now()
+      });
+    }
+
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = reject;
+    });
+
+    // Update total and persist
+    OTHER_TOTAL = newTotal;
+    localStorage.setItem('other_total', String(OTHER_TOTAL));
+
+    showToast('已导入 ' + names.length + ' 条检查项，下方保留' + OTHER_BASE_TOTAL + '条手动输入位');
+
+    // Reload tab
+    const idbData = await loadInspections('other');
+    await renderOtherTab(idbData);
+
+  } catch(e) {
+    console.error('Import error:', e);
+    showToast('导入失败：' + (e.message || '文件格式不正确'));
+  }
+}
+
+// ==================== TOGGLE ====================
+async function toggleItem(tableId, sheetName, seq, btn) {
+  const key = `${tableId}|${sheetName}|${seq}`;
+  const itemEl = btn.closest('.inspect-item');
+  const itemId = itemEl.dataset.itemId;
+  const detailEl = document.getElementById('detail_' + itemId);
+  const labelEl = itemEl.querySelector('.toggle-label');
+
+  const currentlyNG = btn.classList.contains('ng');
+
+  if (currentlyNG) {
+    // Switch to OK
+    btn.classList.remove('ng'); btn.classList.add('ok');
+    labelEl.classList.remove('ng'); labelEl.classList.add('ok');
+    labelEl.textContent = '✅';
+    itemEl.classList.remove('ng');
+    if (detailEl) detailEl.classList.remove('show');
+    // Ensure parent sheet-panel-body adjusts after content shrinks
+    updateSheetBodyHeight(btn);
+
+    await saveInspection(tableId, sheetName, seq, { status: 'ok', problemText: '', photos: [] });
+  } else {
+    // Switch to NG
+    btn.classList.remove('ok'); btn.classList.add('ng');
+    labelEl.classList.remove('ok'); labelEl.classList.add('ng');
+    labelEl.textContent = '❌';
+    itemEl.classList.add('ng');
+    if (detailEl) {
+      detailEl.classList.add('show');
+      // Ensure parent sheet-panel-body can grow to accommodate new content
+      updateSheetBodyHeight(itemEl);
+      // Scroll detail into view so input box and photo area are visible
+      setTimeout(() => detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+    }
+
+    await saveInspection(tableId, sheetName, seq, { status: 'ng', problemText: '', photos: [] });
+  }
+
+  updateCounts(tableId);
+}
+
+// ==================== PROBLEM TEXT ====================
+let _autoSaveTimers = {};
+
+function autoSaveDebounced(tableId, sheetName, seq) {
+  const key = `${tableId}|${sheetName}|${seq}`;
+  if (_autoSaveTimers[key]) clearTimeout(_autoSaveTimers[key]);
+  _autoSaveTimers[key] = setTimeout(() => {
+    const itemId = `${tableId}_${sheetName.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g,'_')}_${seq}`;
+    const detailEl = document.getElementById('detail_' + itemId);
+    if (detailEl) {
+      const textarea = detailEl.querySelector('textarea');
+      if (textarea) {
+        updateProblemText(tableId, sheetName, seq, textarea.value);
+      }
+    }
+  }, 800);
+}
+
+async function updateProblemText(tableId, sheetName, seq, value) {
+  const projKey = getProjectKey();
+  if (!db) await openDB();
+  const id = buildRecordId(tableId, sheetName, seq);
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('inspections', 'readwrite');
+    const store = tx.objectStore('inspections');
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const existing = getReq.result;
+      if (existing) {
+        existing.problemText = value;
+        existing.timestamp = Date.now();
+        store.put(existing);
+      } else {
+        store.put({
+          id, tableId, sheetName, itemSeq: seq,
+          projectKey: projKey, projectName: state.projectName, section: state.section,
+          status: 'ng', problemText: value, photos: [], timestamp: Date.now()
+        });
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ==================== PHOTOS ====================
+async function addPhoto(tableId, sheetName, seq, inputEl, itemId) {
+  const file = inputEl.files[0];
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('照片不能超过10MB');
+    inputEl.value = '';
+    return;
+  }
+
+  // Check global photo count limit
+  const globalCount = await getGlobalPhotoCount();
+  if (globalCount >= 200) {
+    showToast('照片总数已达上限200张，请删除部分照片后再添加');
+    inputEl.value = '';
+    return;
+  }
+  if (globalCount >= 150) {
+    showToast('⚠️ 照片总数已达' + globalCount + '张，接近上限');
+  }
+
+  try {
+    // Read as base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    // Generate thumbnail for display (150px wide, ~5KB)
+    const thumbBase64 = await compressImage(base64, 150, 0.5).catch(() => base64);
+
+    // Generate export-ready medium image (1200px wide, ~450-600KB)
+    const exportBase64 = await compressImage(base64, 1200, 0.90).catch(() => base64);
+
+    // Convert export to Blob for efficient IndexedDB storage
+    let exportBlob;
+    try {
+      exportBlob = dataURLtoBlob(exportBase64);
+    } catch(e) {
+      console.warn('Blob conversion failed, skipping export');
+      exportBlob = null;
+    }
+
+    // Keep file reference for original-quality device save (no extra memory: URL.createObjectURL is zero-copy)
+    const originalFile = file; // File object survives inputEl.value='' below
+
+    // Get current photos from IndexedDB
+    const recordId = buildRecordId(tableId, sheetName, seq);
+    if (!db) await openDB();
+
+    let saved = false;
+    let photoIndex = -1;
+
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction('inspections', 'readwrite');
+      const store = tx.objectStore('inspections');
+      const getReq = store.get(recordId);
+      getReq.onsuccess = () => {
+        const existing = getReq.result;
+        let photos = existing ? (existing.photos || []) : [];
+        if (photos.length >= 5) {
+          reject(new Error('MAX_PHOTOS'));
+          return;
+        }
+        photoIndex = photos.length;
+        // Only store thumb in inspections record; export goes to separate store
+        photos.push({ thumb: thumbBase64 });
+        if (existing) {
+          existing.photos = photos;
+          existing.timestamp = Date.now();
+          store.put(existing);
+        } else {
+          store.put({
+            id: recordId, tableId, sheetName, itemSeq: seq,
+            projectKey: getProjectKey(), projectName: state.projectName, section: state.section,
+            status: 'ng', problemText: '', photos: photos, timestamp: Date.now()
+          });
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }).catch(err => {
+      if (err.message === 'MAX_PHOTOS') {
+        showToast('最多5张照片');
+      }
+      saved = false;
+      return;
+    });
+
+    // Store export Blob in separate photoExports store
+    if (exportBlob && photoIndex >= 0) {
+      try {
+        const exportId = recordId + '_' + photoIndex;
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction('photoExports', 'readwrite');
+          tx.objectStore('photoExports').put({
+            id: exportId,
+            recordId: recordId,
+            blob: exportBlob,
+            timestamp: Date.now()
+          });
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+        saved = true;
+      } catch(e) {
+        console.warn('Failed to save export blob (non-critical):', e);
+        saved = true; // thumb is saved, export loss is acceptable
+      }
+    } else if (photoIndex >= 0) {
+      saved = true;
+    }
+
+    inputEl.value = '';
+
+    // Save ORIGINAL photo to device (using blob URL, zero memory overhead)
+    if (saved && originalFile) {
+      try {
+        const tableLabel = TAB_CONFIG.find(t => t.id === tableId)?.label || tableId;
+        const dateStr = state.checkDate || new Date().toISOString().split('T')[0];
+        savePhotoToDevice(originalFile, state.projectName, state.section, tableLabel, state.inspector, dateStr, sheetName + '-' + seq);
+      } catch(e) {
+        console.warn('Save to device failed:', e);
+      }
+    }
+
+    // Update UI
+    await refreshPhotoGrid(tableId, sheetName, seq, itemId);
+
+  } catch(e) {
+    console.error('addPhoto error:', e);
+    showToast('添加照片失败，请重试');
+    inputEl.value = '';
+  }
+}
+
+// Count total photos across all records for the current project
+async function getGlobalPhotoCount() {
+  if (!db) await openDB();
+  const projKey = getProjectKey();
+  if (!projKey) return 0;
+  return new Promise((resolve) => {
+    const tx = db.transaction('inspections', 'readonly');
+    const store = tx.objectStore('inspections');
+    const index = store.index('project');
+    const range = IDBKeyRange.only(projKey);
+    let count = 0;
+    index.openCursor(range).onsuccess = (e) => {
+      const cursor = e.target.result;
+      if (cursor) {
+        if (cursor.value.photos) count += cursor.value.photos.length;
+        cursor.continue();
+      } else {
+        resolve(count);
+      }
+    };
+    index.openCursor(range).onerror = () => resolve(0);
+  });
+}
+
+// ==================== IMAGE COMPRESSION ====================
+// Compress base64 image using canvas to reduce size
+// Returns compressed base64 string
+function compressImage(base64, maxWidth, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => reject(new Error('compress failed'));
+    img.src = base64;
+  });
+}
+
+// ==================== BLOB CONVERSION HELPERS ====================
+// Convert base64 data URL to Blob (more efficient for IndexedDB storage)
+function dataURLtoBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const mime = parts[0].match(/:(.*?);/)[1];
+  const raw = atob(parts[1]);
+  const array = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) array[i] = raw.charCodeAt(i);
+  return new Blob([array], { type: mime });
+}
+
+// Convert Blob back to base64 data URL (for ExcelJS embedding)
+function blobToDataURL(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Get photo original (backward compat: string = old, object = new)
+function getPhotoOriginal(photo) {
+  // Old format had 'original'; new format uses photoExports store
+  return typeof photo === 'string' ? photo : (photo.thumb || '');
+}
+
+// Get photo thumbnail (backward compat)
+function getPhotoThumb(photo) {
+  if (typeof photo === 'string') return photo; // old format, use as-is
+  return photo.thumb || '';
+}
+
+// Download photo to device with filename matching Excel naming (accepts File object or base64)
+function savePhotoToDevice(fileOrBase64, projectName, section, tableLabel, inspector, dateStr, seq) {
+  try {
+    const parts = [projectName, section, tableLabel, inspector, dateStr, String(seq)];
+    const filename = parts.filter(Boolean).join('_') + '.jpg';
+    const a = document.createElement('a');
+    // If it's a File, use blob URL (zero-copy); if base64 string, use directly
+    if (fileOrBase64 instanceof File || fileOrBase64 instanceof Blob) {
+      a.href = URL.createObjectURL(fileOrBase64);
+    } else {
+      a.href = fileOrBase64;
+    }
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Revoke blob URL to free memory
+    if (a.href.startsWith('blob:')) {
+      setTimeout(() => URL.revokeObjectURL(a.href), 100);
+    }
+  } catch(e) {
+    console.warn('Save to device failed:', e);
+  }
+}
+
+async function refreshPhotoGrid(tableId, sheetName, seq, itemId) {
+  const id = buildRecordId(tableId, sheetName, seq);
+  if (!db) await openDB();
+  const photos = await new Promise((resolve) => {
+    const tx = db.transaction('inspections', 'readonly');
+    const store = tx.objectStore('inspections');
+    store.get(id).onsuccess = e => resolve(e.target.result ? (e.target.result.photos || []) : []);
+  });
+
+  const photoGrid = document.getElementById('photos_' + itemId);
+  if (photoGrid) {
+    let addHtml = '';
+    if (photos.length < 5) {
+      addHtml = `<label class="photo-add" id="photo_add_${itemId}">
+        +
+        <input type="file" capture="environment" accept="image/*"
+               style="display:none"
+               onchange="addPhoto('${tableId}','${escAttr(sheetName)}',${seq},this,'${itemId}')">
+      </label>`;
+    }
+    photoGrid.innerHTML = renderPhotos(tableId, sheetName, seq, photos) + addHtml;
+  }
+}
+
+async function deletePhoto(tableId, sheetName, seq, photoIndex, itemId) {
+  const recordId = buildRecordId(tableId, sheetName, seq);
+  if (!db) await openDB();
+
+  // 1. Snapshot existing Blobs from photoExports before deletion (indices: 0..4)
+  const savedBlobs = {};
+  try {
+    for (let i = 0; i < 5; i++) {
+      const blob = await new Promise((resolve) => {
+        const tx = db.transaction('photoExports', 'readonly');
+        tx.objectStore('photoExports').get(recordId + '_' + i).onsuccess = e => {
+          resolve(e.target.result ? e.target.result.blob : null);
+        };
+      });
+      if (blob) savedBlobs[i] = blob;
+    }
+  } catch(e) {}
+
+  // 2. Remove photo from inspections record
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction('inspections', 'readwrite');
+    const store = tx.objectStore('inspections');
+    const getReq = store.get(recordId);
+    getReq.onsuccess = () => {
+      const existing = getReq.result;
+      if (!existing) { resolve(); return; }
+      let photos = existing.photos || [];
+      photos.splice(photoIndex, 1);
+      existing.photos = photos;
+      existing.timestamp = Date.now();
+      store.put(existing);
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+
+  // 3. Delete all old photoExports for this record
+  try {
+    await new Promise((resolve) => {
+      const tx = db.transaction('photoExports', 'readwrite');
+      const store = tx.objectStore('photoExports');
+      for (let i = 0; i < 5; i++) store.delete(recordId + '_' + i);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+
+    // 4. Re-save Blobs with shifted indices: oldIndex > deletedIndex → newIndex = oldIndex - 1
+    for (const [oldIdxStr, blob] of Object.entries(savedBlobs)) {
+      const oldIdx = parseInt(oldIdxStr);
+      if (oldIdx === photoIndex) continue; // deleted photo, skip
+      const newIdx = oldIdx > photoIndex ? oldIdx - 1 : oldIdx;
+      await new Promise((res) => {
+        const tx = db.transaction('photoExports', 'readwrite');
+        tx.objectStore('photoExports').put({
+          id: recordId + '_' + newIdx,
+          recordId: recordId,
+          blob: blob,
+          timestamp: Date.now()
+        });
+        tx.oncomplete = () => res();
+        tx.onerror = () => res();
+      });
+    }
+  } catch(e) {
+    console.warn('Export cleanup error (non-critical):', e);
+  }
+
+  // Update UI
+  await refreshPhotoGrid(tableId, sheetName, seq, itemId);
+}
+
+// ==================== COUNT UPDATE ====================
+function updateCounts(tableId) {
+  let totalItems = 0;
+  let ngCount = 0;
+  const items = document.querySelectorAll('.inspect-item');
+  items.forEach(el => {
+    totalItems++;
+    if (el.classList.contains('ng')) ngCount++;
+  });
+  const totalEl = document.getElementById('total-count');
+  const ngEl = document.getElementById('ng-count');
+  if (totalEl) totalEl.textContent = totalItems;
+  if (ngEl) ngEl.textContent = ngCount;
+
+  // Update sheet panel stats and show/hide
+  document.querySelectorAll('.sheet-panel').forEach(panel => {
+    const items = panel.querySelectorAll('.inspect-item');
+    const sheetNg = panel.querySelectorAll('.inspect-item.ng').length;
+    const header = panel.querySelector('.sheet-panel-header');
+    const statsSpan = header.querySelector('.sheet-stats');
+    if (statsSpan) {
+      statsSpan.textContent = `（${items.length}条${sheetNg > 0 ? '，'+sheetNg+'条不合格' : ''}）`;
+    }
+  });
+
+  const exportBar = document.getElementById('export-bar');
+  if (ngCount > 0) {
+    exportBar.classList.add('show');
+  } else {
+    exportBar.classList.remove('show');
+  }
+}
+
+// ==================== SHEET TOGGLE ====================
+function toggleSheet(header) {
+  const arrow = header.querySelector('.arrow');
+  const body = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  if (isOpen) {
+    // Closing: set fixed maxHeight first (for transition), then collapse
+    body.style.maxHeight = body.scrollHeight + 'px';
+    // Force reflow so the browser registers the starting value
+    body.offsetHeight; // eslint-disable-line no-unused-expressions
+    body.classList.remove('open');
+    arrow.classList.remove('open');
+    body.style.maxHeight = '0';
+  } else {
+    body.classList.add('open');
+    arrow.classList.add('open');
+    body.style.maxHeight = body.scrollHeight + 'px';
+    // After transition, set maxHeight to 'none' so content can grow freely
+    const onEnd = () => {
+      if (body.classList.contains('open')) {
+        body.style.maxHeight = 'none';
+      }
+      body.removeEventListener('transitionend', onEnd);
+    };
+    body.addEventListener('transitionend', onEnd);
+    // Fallback in case transitionend doesn't fire
+    setTimeout(() => {
+      if (body.classList.contains('open')) {
+        body.style.maxHeight = 'none';
+      }
+    }, 400);
+    // Scroll panel header to be visible below sticky headers
+    setTimeout(() => {
+      header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  }
+}
+
+// ==================== EXPORT ====================
+// Helper: get export-ready image from a photo record
+function getPhotoExport(photo) {
+  if (typeof photo === 'string') return photo; // old format
+  // New format: no export in inspections record; it's in photoExports store
+  return photo.thumb || ''; // fallback to thumb
+}
+
+async function exportCurrentTable() {
+  const tableId = state.currentTab;
+  const isOther = tableId === 'other';
+  
+  if (!isOther) {
+    const table = INSPECTION_DATA.tables.find(t => t.id === tableId);
+    if (!table) { showToast('数据加载失败'); return; }
+  }
+
+  const ngRecords = await loadAllNGInspections(tableId);
+  if (ngRecords.length === 0) {
+    showToast('当前表没有不合格项，无需导出');
+    return;
+  }
+
+  // Count total photos for progress
+  let totalPhotos = 0;
+  for (const rec of ngRecords) {
+    totalPhotos += (rec.photoCount || 0);
+  }
+  let processedPhotos = 0;
+
+  showToast('正在生成Excel...（0/' + totalPhotos + '张照片）');
+
+  try {
+    // Build data rows
+    const rows = [];
+    const imageTasks = []; // { rowNum, recordId, photoCount }
+    const MAX_PHOTOS = 5;
+
+    for (let i = 0; i < ngRecords.length; i++) {
+      const rec = ngRecords[i];
+      let pointName = '', contentText = '', basisText = '';
+
+      if (isOther) {
+        pointName = rec.itemName || '（未命名）';
+        contentText = '';
+        basisText = '';
+      } else {
+        const tableData = INSPECTION_DATA.tables.find(t => t.id === rec.tableId);
+        if (tableData) {
+          const sheetData = tableData.sheets.find(s => s.name === rec.sheetName);
+          if (sheetData) {
+            const item = sheetData.items.find(it => it.seq === rec.itemSeq);
+            if (item) {
+              pointName = item.point;
+              contentText = item.content;
+              basisText = item.basis;
+            }
+          }
+        }
+      }
+
+      const photoCount = rec.photoCount || 0;
+      const rowData = [
+        i + 1,
+        (rec.sheetName && rec.itemSeq ? rec.sheetName + '-' + rec.itemSeq : rec.itemSeq || ''),
+        `[${rec.sheetName}] ${pointName}`,
+        contentText,
+        basisText,
+        rec.problemText || '（未填写）'
+      ];
+      for (let p = 0; p < MAX_PHOTOS; p++) {
+        rowData.push('');
+      }
+      rows.push(rowData);
+
+      if (photoCount > 0) {
+        const recordId = buildRecordId(rec.tableId, rec.sheetName, rec.itemSeq);
+        imageTasks.push({ rowNum: i, recordId, photoCount: Math.min(photoCount, MAX_PHOTOS) });
+      }
+    }
+
+    // === ExcelJS Workbook ===
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('不合格项');
+
+    // Define columns
+    ws.columns = [
+      { header: '序号', key: 'seq', width: 6 },
+      { header: '原始序号', key: 'origSeq', width: 8 },
+      { header: '监督项目/要点', key: 'point', width: 26 },
+      { header: '监督内容及要求', key: 'content', width: 40 },
+      { header: '监督依据', key: 'basis', width: 40 },
+      { header: '问题描述', key: 'problem', width: 36 },
+      { header: '照片1', key: 'p1', width: 20 },
+      { header: '照片2', key: 'p2', width: 20 },
+      { header: '照片3', key: 'p3', width: 20 },
+      { header: '照片4', key: 'p4', width: 20 },
+      { header: '照片5', key: 'p5', width: 20 }
+    ];
+
+    // Add data rows
+    for (let r = 0; r < rows.length; r++) {
+      ws.addRow(rows[r]);
+    }
+
+    // Style header
+    const headerRow = ws.getRow(1);
+    headerRow.height = 28;
+    const totalCols = 11;
+    for (let c = 1; c <= totalCols; c++) {
+      const cell = headerRow.getCell(c);
+      cell.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1A73E8' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = {
+        top: { style: 'thin' }, bottom: { style: 'thin' },
+        left: { style: 'thin' }, right: { style: 'thin' }
+      };
+    }
+
+    // Style data rows
+    for (let r = 2; r < 2 + rows.length; r++) {
+      const row = ws.getRow(r);
+      for (let c = 1; c <= totalCols; c++) {
+        const cell = row.getCell(c);
+        cell.font = { size: 11 };
+        cell.alignment = { vertical: 'top', wrapText: true };
+        cell.border = {
+          top: { style: 'thin' }, bottom: { style: 'thin' },
+          left: { style: 'thin' }, right: { style: 'thin' }
+        };
+      }
+    }
+
+    // === Embed images: read Blob from photoExports one at a time ===
+    const DISPLAY_WIDTH = 130;
+    let maxRowHeight = 80;
+
+    for (const task of imageTasks) {
+      const rowNum = task.rowNum + 2;
+      let rowPhotoMaxHeight = 0;
+
+      for (let pi = 0; pi < task.photoCount; pi++) {
+        try {
+          const exportId = task.recordId + '_' + pi;
+          let exportUrl = '';
+
+          // Try to read from photoExports store first (new format: Blob)
+          let exportBlob = null;
+          try {
+            if (!db) await openDB();
+            exportBlob = await new Promise((resolve) => {
+              const tx = db.transaction('photoExports', 'readonly');
+              tx.objectStore('photoExports').get(exportId).onsuccess = e => {
+                const result = e.target.result;
+                resolve(result ? result.blob : null);
+              };
+            });
+          } catch(e) {
+            console.warn('photoExports read failed for', exportId, e);
+          }
+
+          if (exportBlob) {
+            // Convert Blob to base64 data URL for ExcelJS
+            exportUrl = await blobToDataURL(exportBlob);
+            exportBlob = null; // free Blob reference
+          } else {
+            // Fallback: read from inspections record (backward compat with old data)
+            const rawPhotos = await new Promise((resolve) => {
+              const tx = db.transaction('inspections', 'readonly');
+              tx.objectStore('inspections').get(task.recordId).onsuccess = e => {
+                resolve(e.target.result ? (e.target.result.photos || []) : []);
+              };
+            });
+            if (rawPhotos[pi]) {
+              const p = rawPhotos[pi];
+              if (typeof p === 'string') {
+                exportUrl = p; // old format
+              } else if (p.export) {
+                exportUrl = p.export; // v1 format with export field
+              } else if (p.thumb) {
+                // Only thumb available — try to upscale (lower quality but better than nothing)
+                exportUrl = await compressImage(p.thumb, 1200, 0.85).catch(() => p.thumb);
+              }
+            }
+          }
+
+          if (!exportUrl || !exportUrl.startsWith('data:image/')) continue;
+
+          // For old string-format photos that are very large, compress on-the-fly
+          if (exportUrl.length > 2000000) { // > 2MB base64 string
+            exportUrl = await compressImage(exportUrl, 1200, 0.90).catch(() => exportUrl);
+          }
+
+          const mimeMatch = exportUrl.match(/^data:(image\/\w+);/);
+          const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+          const ext = mime === 'image/png' ? 'png' : 'jpeg';
+          const pureBase64 = exportUrl.replace(/^data:image\/\w+;base64,/, '');
+
+          // Load image to get dimensions
+          const imgEl = await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = exportUrl;
+          });
+
+          const aspectRatio = imgEl.naturalWidth / imgEl.naturalHeight;
+          const displayHeight = Math.round(DISPLAY_WIDTH / aspectRatio);
+
+          // Add image to workbook
+          const imageId = wb.addImage({
+            base64: pureBase64,
+            extension: ext
+          });
+
+          const colIdx = 6 + pi;
+          ws.addImage(imageId, {
+            tl: { col: colIdx, row: rowNum - 1 },
+            ext: { width: DISPLAY_WIDTH, height: displayHeight },
+            editAs: 'oneCell'
+          });
+
+          if (displayHeight > rowPhotoMaxHeight) {
+            rowPhotoMaxHeight = displayHeight;
+          }
+
+          processedPhotos++;
+          // Update progress every 3 photos
+          if (processedPhotos % 3 === 0 || processedPhotos === totalPhotos) {
+            showToast('正在生成Excel...（' + processedPhotos + '/' + totalPhotos + '张照片）');
+            // Yield to UI thread
+            await new Promise(r => setTimeout(r, 20));
+          }
+
+        } catch(e) {
+          console.warn('Image embed error:', e);
+          processedPhotos++;
+        }
+      }
+
+      // Set row height
+      const rowHeightPx = Math.max(80, rowPhotoMaxHeight + 10);
+      ws.getRow(rowNum).height = rowHeightPx;
+      if (rowHeightPx > maxRowHeight) maxRowHeight = rowHeightPx;
+    }
+
+    // Generate filename
+    const dateStr = state.checkDate || new Date().toISOString().split('T')[0];
+    const tableLabel = isOther ? '其他' : (TAB_CONFIG.find(t => t.id === tableId)?.label || tableId);
+    const filename = [
+      state.projectName || '未命名项目',
+      state.section,
+      tableLabel,
+      state.inspector,
+      dateStr
+    ].filter(Boolean).join('_') + '.xlsx';
+
+    // Write and download
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast(`已导出 ${filename} ✓`);
+  } catch(e) {
+    console.error('Export error:', e);
+    showToast('导出失败：' + e.message);
+  }
+}
+
+// ==================== HELPERS ====================
+function autoResizeTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+  // Ensure parent sheet-panel-body expands if needed
+  updateSheetBodyHeight(el);
+}
+
+// Ensure the parent .sheet-panel-body.maxHeight can accommodate dynamic content
+function updateSheetBodyHeight(el) {
+  const body = el.closest('.sheet-panel-body');
+  if (body && body.classList.contains('open')) {
+    body.style.maxHeight = 'none';
+  }
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+// ==================== SERVICE WORKER REGISTRATION ====================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      console.log('[SW] Registered:', reg.scope);
+    }).catch(err => {
+      console.warn('[SW] Registration failed:', err);
+    });
+  });
+}
+
+// ==================== STARTUP ====================
+document.addEventListener('DOMContentLoaded', checkAuthAndInit);
+
+// Save project info when page is hidden (prevents data loss on crash/kill)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    // Save any pending project info
+    saveProjectToStorage();
+    // Force IndexedDB flush by opening a quick read transaction on all stores
+    if (db) {
+      try {
+        const tx = db.transaction('inspections', 'readonly');
+        tx.objectStore('inspections').count();
+      } catch(e) {}
+      try {
+        const tx2 = db.transaction('photoExports', 'readonly');
+        tx2.objectStore('photoExports').count();
+      } catch(e) {}
+    }
+  }
+});
+
+// Warn before page unload to prevent accidental data loss
+window.addEventListener('beforeunload', (e) => {
+  saveProjectToStorage();
+});
+
+// Auto-save project info periodically (every 30s)
+setInterval(() => {
+  if (state.projectName) {
+    saveProjectToStorage();
+  }
+}, 30000);
+
+// Memory pressure detection: warn user if performance.memory shows high usage
+if (performance && performance.memory) {
+  setInterval(() => {
+    const mem = performance.memory;
+    if (mem && mem.usedJSHeapSize > 0) {
+      const usageRatio = mem.usedJSHeapSize / mem.jsHeapSizeLimit;
+      if (usageRatio > 0.85) {
+        showToast('⚠️ 内存占用较高，建议尽快导出数据并刷新页面');
+      }
+    }
+  }, 60000);
+}
+
+// Handle sheet panel body transitions
+document.addEventListener('transitionend', function(e) {
+  if (e.target.classList.contains('sheet-panel-body') && e.target.classList.contains('open')) {
+    e.target.style.maxHeight = 'none';
+  }
+});
+
+// Close project modal when clicking overlay
+document.getElementById('project-modal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    if (state.projectName) {
+      this.classList.add('hidden');
+    }
+  }
+});
+</script>
+</body>
+</html>
